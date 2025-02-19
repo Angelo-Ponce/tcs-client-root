@@ -27,21 +27,21 @@ public class ClientController {
     private final MapperUtil mapperUtil;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<List<ClientDTO>> findAll(){
         List<ClientDTO> list = mapperUtil.mapList(service.findAll(), ClientDTO.class);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(list);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<BaseResponse> findById(@PathVariable("id") Long id){
         ClientEntity obj = service.findById(id);
         return ResponseEntity.ok(BaseResponse.builder().data(mapperUtil.map(obj, ClientDTO.class)).build());
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Void> save(@Valid @RequestBody ClientDTO dto){
         ClientEntity clientEntity = mapperUtil.map(dto, ClientEntity.class);
         clientEntity.setCreatedDate(new Date());
@@ -53,7 +53,7 @@ public class ClientController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<BaseResponse> update( @PathVariable("id") Long id, @RequestBody ClientDTO dto){
         dto.setPersonId(id);
         ClientEntity clientEntity = mapperUtil.map(dto, ClientEntity.class);
