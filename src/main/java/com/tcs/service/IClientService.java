@@ -1,8 +1,11 @@
 package com.tcs.service;
 
 import com.tcs.model.ClientEntity;
+import reactor.core.publisher.Mono;
 
-public interface IClientService extends ICRUD<ClientEntity, Long> {
+public interface IClientService extends ICRUDService<ClientEntity, Long> {
 
-    void deleteLogic(Long id);
+    Mono<ClientEntity> save(ClientEntity client, String user);
+    Mono<ClientEntity> update(Long id, ClientEntity client, String user);
+    Mono<Boolean> deleteLogic(Long id, String user);
 }
