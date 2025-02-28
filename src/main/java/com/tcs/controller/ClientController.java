@@ -46,6 +46,17 @@ public class ClientController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/client/{clientId}")
+    public Mono<ResponseEntity<ClientDTO>> findByClientId(@PathVariable("clientId") String clientId) {
+        return service.findByClientId(clientId)
+                .map(e -> mapperUtil.map(e, ClientDTO.class))
+                .map(client -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(client)
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public Mono<ResponseEntity<ClientDTO>> save(@Valid @RequestBody ClientDTO dto, final ServerHttpRequest request) {
         return service.save(mapperUtil.map(dto, ClientEntity.class), "Angelo" )

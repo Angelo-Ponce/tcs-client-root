@@ -47,6 +47,11 @@ public class ClientServiceImpl extends CRUDImpl<ClientEntity, Long> implements I
     }
 
     @Override
+    public Mono<ClientEntity> findByClientId(String clientId) {
+        return repository.findByClientId(clientId);
+    }
+
+    @Override
     public Mono<Boolean> deleteLogic(Long id, String user) {
         return repository.findById(id)
                 .flatMap(existingClient -> {
