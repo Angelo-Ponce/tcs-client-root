@@ -1,6 +1,5 @@
 package com.tcs.controller;
 
-import com.tcs.dto.BaseResponse;
 import com.tcs.dto.ClientDTO;
 import com.tcs.model.ClientEntity;
 import com.tcs.service.IClientService;
@@ -9,13 +8,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
-import java.util.Date;
-import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/clients")
@@ -27,50 +25,83 @@ public class ClientController {
     private final MapperUtil mapperUtil;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<List<ClientDTO>> findAll(){
-        List<ClientDTO> list = mapperUtil.mapList(service.findAll(), ClientDTO.class);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(list);
+    public Mono<ResponseEntity<Flux<ClientDTO>>> findAll(){
+        Flux<ClientDTO> clientDTOFlux = service.findAll()
+                .map(e -> mapperUtil.map(e, ClientDTO.class));
+        return Mono.just(
+                ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(clientDTOFlux))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<BaseResponse> findById(@PathVariable("id") Long id){
-        ClientEntity obj = service.findById(id);
-        return ResponseEntity.ok(BaseResponse.builder().data(mapperUtil.map(obj, ClientDTO.class)).build());
+    public Mono<ResponseEntity<ClientDTO>> findById(@PathVariable("id") Long id) {
+        return service.findById(id)
+                .map(e -> mapperUtil.map(e, ClientDTO.class))
+                .map(client -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(client)
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/client/{clientId}")
+    public Mono<ResponseEntity<ClientDTO>> findByClientId(@PathVariable("clientId") String clientId) {
+        return service.findByClientId(clientId)
+                .map(e -> mapperUtil.map(e, ClientDTO.class))
+                .map(client -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(client)
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Void> save(@Valid @RequestBody ClientDTO dto){
-        ClientEntity clientEntity = mapperUtil.map(dto, ClientEntity.class);
-        clientEntity.setCreatedDate(new Date());
-        clientEntity.setCreatedByUser("Angelo");
-        ClientEntity obj = service.save(clientEntity);
-
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(obj.getPersonId()).toUri();
-        return ResponseEntity.created(location).build();
+    public Mono<ResponseEntity<ClientDTO>> save(@Valid @RequestBody ClientDTO dto, final ServerHttpRequest request) {
+        return service.save(mapperUtil.map(dto, ClientEntity.class), "Angelo" )
+                .map(e -> mapperUtil.map(e, ClientDTO.class))
+                .map(e -> ResponseEntity.created(
+                                        URI.create(request.getURI().toString().concat("/").concat(e.getPersonId().toString()))
+                                )
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(e)
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<BaseResponse> update( @PathVariable("id") Long id, @RequestBody ClientDTO dto){
-        dto.setPersonId(id);
-        ClientEntity clientEntity = mapperUtil.map(dto, ClientEntity.class);
-        clientEntity.setLastModifiedDate(new Date());
-        clientEntity.setLastModifiedByUser("Angelo");
-        ClientEntity obj = service.update(id, clientEntity);
-
-        return ResponseEntity.ok(BaseResponse.builder().data(mapperUtil.map(obj, ClientDTO.class)).build());
+    public Mono<ResponseEntity<ClientDTO>> update(@Valid @PathVariable("id") Long id, @RequestBody ClientDTO dto) {
+        return service.update(id, mapperUtil.map(dto, ClientEntity.class), "Angelo")
+                .map(e -> mapperUtil.map(e, ClientDTO.class))
+                .map(e -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(e)
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete( @PathVariable("id") Long id){
-        // Eliminar registro
-        //service.delete(id);
-        // Eliminado logico
-        service.deleteLogic(id);
-        return ResponseEntity.noContent().build();
+    public Mono<ResponseEntity<Void>> delete(@PathVariable("id") Long id) {
+        return service.deleteById(id)
+                .flatMap( result -> {
+                    if(Boolean.TRUE.equals(result)) {
+                        return Mono.just(ResponseEntity.noContent().build());
+                    } else {
+                        return Mono.just(ResponseEntity.notFound().build());
+                    }
+                });
+    }
+
+    @DeleteMapping("/deletelogic/{id}")
+    public Mono<ResponseEntity<Void>> deleteLogic(@PathVariable("id") Long id) {
+        return service.deleteLogic(id, "Angelo")
+                .flatMap( result -> {
+                    if(Boolean.TRUE.equals(result)) {
+                        return Mono.just(ResponseEntity.noContent().build());
+                    } else {
+                        return Mono.just(ResponseEntity.notFound().build());
+                    }
+                });
     }
 }
